@@ -11,17 +11,24 @@ export const protect = async (req, res, next) => {
     try {
       token = req.headers.authorization.split(" ")[1];
 
-      // 2. Verify token
+      // Verify token
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // 3. Get user from token
-      req.user = await User.findById(decoded.id).select("-password");
+      // Support both `decoded.id` and `decoded._id`
+      const userId = decoded.id || decoded._id;
+
+      if (!userId) {
+        return res.status(401).json({ message: "Invalid token payload structure" });
+      }
+
+      // Get user from database
+      req.user = await User.findById(userId).select("-password");
 
       if (!req.user) {
         return res.status(401).json({ message: "User not found with this token" });
       }
 
-      next();
+      return next(); // Return next() to prevent duplicate handler execution
     } catch (error) {
       console.error("JWT Verification Error:", error.message);
       return res.status(401).json({ message: "Not authorized, token failed or expired" });

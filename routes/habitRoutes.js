@@ -1,7 +1,7 @@
 import express from "express";
 import {
-  createHabit,
   getHabits,
+  createHabit,
   toggleHabit,
   deleteHabit,
 } from "../controllers/habitController.js";
@@ -13,8 +13,8 @@ const router = express.Router();
 router.use(protect);
 
 router.route("/")
-  .post(createHabit)
-  .get(getHabits);
+  .get(getHabits)
+  .post(createHabit);
 
 router.route("/:id")
   .delete(deleteHabit);
