@@ -5,6 +5,7 @@ import connectDB from "./config/db.js";
 import authRoutes from "./routes/authRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
 import habitRoutes from "./routes/habitRoutes.js";
+import goalRoutes from "./routes/goalRoutes.js";
 
 // Load environment variables
 dotenv.config();
@@ -22,6 +23,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use("/api/habits", habitRoutes);
+app.use("/api/goals", goalRoutes);
 
 
 // Base route
