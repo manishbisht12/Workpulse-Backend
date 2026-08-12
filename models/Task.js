@@ -13,10 +13,10 @@ const taskSchema = new mongoose.Schema(
       trim: true,
     },
     category: {
-      type: String,
-      default: "Development",
-      enum: ["Development", "Design", "Marketing", "Personal", "Other"],
-    },
+          type: String,
+          default: "Development",
+          trim: true,
+        },
     dueDate: {
       type: Date,
       required: [true, "Due date is required"],
