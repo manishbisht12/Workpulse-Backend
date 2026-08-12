@@ -1,25 +1,22 @@
 import express from "express";
 import {
-  createHabit,
-  getHabits,
-  toggleHabit,
-  deleteHabit,
-} from "../controllers/habitController.js";
+  createTask,
+  getTasks,
+  updateTask,
+  deleteTask,
+} from "../controllers/taskController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-
 router.use(protect);
 
 router.route("/")
-  .post(createHabit)
-  .get(getHabits);
+  .post(createTask)
+  .get(getTasks);
 
 router.route("/:id")
-  .delete(deleteHabit);
-
-router.route("/:id/toggle")
-  .patch(toggleHabit);
+  .put(updateTask)
+  .delete(deleteTask);
 
 export default router;
