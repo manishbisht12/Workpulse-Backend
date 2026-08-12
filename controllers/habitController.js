@@ -48,7 +48,6 @@ export const createHabit = async (req, res) => {
 // @route   PATCH /api/habits/:id/toggle
 export const toggleHabit = async (req, res) => {
   try {
-    // Ensure habit belongs to the logged-in user
     const habit = await Habit.findOne({ _id: req.params.id, user: req.user._id });
 
     if (!habit) {
@@ -67,6 +66,15 @@ export const toggleHabit = async (req, res) => {
     habit.completedToday = isNowCompleted;
     habit.streak = newStreak;
     habit.bestStreak = Math.max(habit.bestStreak, newStreak);
+
+    // 🔴 RATE CALCULATION FIX:
+    // Basic calculation: (streak / bestStreak) * 100
+    // Pehle din agar mark complete hua (newStreak = 1), toh Rate 100%
+    if (habit.bestStreak > 0) {
+      habit.rate = Math.round((habit.streak / habit.bestStreak) * 100);
+    } else {
+      habit.rate = 0;
+    }
 
     await habit.save();
 
