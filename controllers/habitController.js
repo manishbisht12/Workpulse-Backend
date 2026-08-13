@@ -1,16 +1,32 @@
 import Habit from "../models/Habit.js";
 
-// @desc    Get all habits for logged-in user
+// @desc    Get all habits for logged-in user (With Auto Unmark for New Day)
 // @route   GET /api/habits
 export const getHabits = async (req, res) => {
   try {
-    // Filter habits strictly by the authenticated user ID
     const habits = await Habit.find({ user: req.user._id }).sort({ createdAt: -1 });
+
+    const todayStr = new Date().toISOString().split("T")[0]; // E.g. "2026-08-13"
+
+    // Check each habit: Agar last updated date AAJ ki nahi hai, toh completedToday ko false kar do
+    const updatedHabits = await Promise.all(
+      habits.map(async (habit) => {
+        const lastUpdatedStr = habit.updatedAt ? new Date(habit.updatedAt).toISOString().split("T")[0] : null;
+
+        // Agar aakhiri update AAJ nahi tha aur button abhi bhi completedToday = true hai
+        if (lastUpdatedStr && lastUpdatedStr !== todayStr && habit.completedToday) {
+          habit.completedToday = false; 
+          // Note: Streak aur Rate ko bilkul touch nahi kar rahe, wo safe rahenge!
+          await habit.save();
+        }
+        return habit;
+      })
+    );
 
     res.status(200).json({
       success: true,
-      count: habits.length,
-      data: habits,
+      count: updatedHabits.length,
+      data: updatedHabits,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
