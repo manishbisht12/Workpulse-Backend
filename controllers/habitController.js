@@ -1,23 +1,39 @@
 import Habit from "../models/Habit.js";
 
-// @desc    Get all habits for logged-in user (With Auto Unmark for New Day)
-// @route   GET /api/habits
+const calculateRate = (streak, completedToday) => {
+  const currentStreak = streak || 0;
+
+  if (currentStreak === 0) return 0;
+  if (completedToday) return 100;
+
+  const expectedDays = currentStreak + 1;
+
+  // Example: Streak = 1, Expected = 2 -> (1 / 2) * 100 = 50%
+  const rate = Math.round((currentStreak / expectedDays) * 100);
+  return Math.min(100, Math.max(0, rate));
+};
+
 export const getHabits = async (req, res) => {
   try {
     const habits = await Habit.find({ user: req.user._id }).sort({ createdAt: -1 });
 
-    const todayStr = new Date().toISOString().split("T")[0]; // E.g. "2026-08-13"
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-  
     const updatedHabits = await Promise.all(
       habits.map(async (habit) => {
-        const lastUpdatedStr = habit.updatedAt ? new Date(habit.updatedAt).toISOString().split("T")[0] : null;
+        const lastUpdated = habit.updatedAt ? new Date(habit.updatedAt) : null;
+        const lastUpdatedStr = lastUpdated 
+          ? `${lastUpdated.getFullYear()}-${String(lastUpdated.getMonth() + 1).padStart(2, '0')}-${String(lastUpdated.getDate()).padStart(2, '0')}`
+          : null;
 
         if (lastUpdatedStr && lastUpdatedStr !== todayStr && habit.completedToday) {
-          habit.completedToday = false; 
-         
-          await habit.save();
+          habit.completedToday = false;
         }
+
+        habit.rate = calculateRate(habit.streak, habit.completedToday);
+        await habit.save();
+
         return habit;
       })
     );
@@ -32,8 +48,6 @@ export const getHabits = async (req, res) => {
   }
 };
 
-// @desc    Create a new habit
-// @route   POST /api/habits
 export const createHabit = async (req, res) => {
   try {
     const { title, category, emoji, colorClass } = req.body;
@@ -47,7 +61,11 @@ export const createHabit = async (req, res) => {
       category: category || "General",
       emoji: emoji || "⚡",
       colorClass: colorClass || "stroke-cyan-400",
-      user: req.user._id, // Assign logged in user ID
+      user: req.user._id,
+      rate: 0,
+      streak: 0,
+      bestStreak: 0,
+      completedToday: false,
     });
 
     res.status(201).json({
@@ -59,8 +77,6 @@ export const createHabit = async (req, res) => {
   }
 };
 
-// @desc    Toggle habit status
-// @route   PATCH /api/habits/:id/toggle
 export const toggleHabit = async (req, res) => {
   try {
     const habit = await Habit.findOne({ _id: req.params.id, user: req.user._id });
@@ -70,26 +86,12 @@ export const toggleHabit = async (req, res) => {
     }
 
     const isNowCompleted = !habit.completedToday;
-    let newStreak = habit.streak;
-
-    if (isNowCompleted) {
-      newStreak += 1;
-    } else {
-      newStreak = Math.max(0, newStreak - 1);
-    }
+    let newStreak = isNowCompleted ? habit.streak + 1 : Math.max(0, habit.streak - 1);
 
     habit.completedToday = isNowCompleted;
     habit.streak = newStreak;
     habit.bestStreak = Math.max(habit.bestStreak, newStreak);
-
-    // 🔴 RATE CALCULATION FIX:
-    // Basic calculation: (streak / bestStreak) * 100
-    // Pehle din agar mark complete hua (newStreak = 1), toh Rate 100%
-    if (habit.bestStreak > 0) {
-      habit.rate = Math.round((habit.streak / habit.bestStreak) * 100);
-    } else {
-      habit.rate = 0;
-    }
+    habit.rate = calculateRate(habit.streak, habit.completedToday);
 
     await habit.save();
 
@@ -102,8 +104,6 @@ export const toggleHabit = async (req, res) => {
   }
 };
 
-// @desc    Delete habit
-// @route   DELETE /api/habits/:id
 export const deleteHabit = async (req, res) => {
   try {
     const habit = await Habit.findOneAndDelete({ _id: req.params.id, user: req.user._id });

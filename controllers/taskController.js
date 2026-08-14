@@ -5,19 +5,24 @@ import Task from "../models/Task.js";
 // @access  Private
 export const createTask = async (req, res) => {
   try {
-    const { title, category, dueDate, priority, status } = req.body;
+    const { title, category, dueDate, priority, status, description } = req.body;
 
-    if (!title || !dueDate) {
-      return res.status(400).json({ message: "Title and Due Date are required" });
+    // Check only title as mandatory
+    if (!title || !title.trim()) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Title is required" 
+      });
     }
 
     const task = await Task.create({
-      user: req.user._id, // Set from authMiddleware (protect)
-      title,
+      user: req.user._id,
+      title: title.trim(),
       category: category || "Development",
-      dueDate,
+      dueDate: dueDate || null, // Handle empty string gracefully
       priority: priority || "Medium",
       status: status || "Pending",
+      description: description || "",
     });
 
     res.status(201).json({
@@ -26,7 +31,10 @@ export const createTask = async (req, res) => {
       task,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || "Server Error" 
+    });
   }
 };
 
@@ -43,7 +51,7 @@ export const getTasks = async (req, res) => {
       tasks,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({ success: false, message: error.message || "Server Error" });
   }
 };
 
@@ -55,12 +63,11 @@ export const updateTask = async (req, res) => {
     let task = await Task.findById(req.params.id);
 
     if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+      return res.status(404).json({ success: false, message: "Task not found" });
     }
 
-    // Ensure logged-in user owns the task
     if (task.user.toString() !== req.user._id.toString()) {
-      return res.status(401).json({ message: "Not authorized to update this task" });
+      return res.status(401).json({ success: false, message: "Not authorized to update this task" });
     }
 
     task = await Task.findByIdAndUpdate(req.params.id, req.body, {
@@ -74,7 +81,7 @@ export const updateTask = async (req, res) => {
       task,
     });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({ success: false, message: error.message || "Server Error" });
   }
 };
 
@@ -86,12 +93,11 @@ export const deleteTask = async (req, res) => {
     const task = await Task.findById(req.params.id);
 
     if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+      return res.status(404).json({ success: false, message: "Task not found" });
     }
 
-    // Ensure logged-in user owns the task
     if (task.user.toString() !== req.user._id.toString()) {
-      return res.status(401).json({ message: "Not authorized to delete this task" });
+      return res.status(401).json({ success: false, message: "Not authorized to delete this task" });
     }
 
     await task.deleteOne();
@@ -101,6 +107,6 @@ export const deleteTask = async (req, res) => {
       message: "Task removed successfully",
     });
   } catch (error) {
-    res.status(500).json({ message: "Server Error", error: error.message });
+    res.status(500).json({ success: false, message: error.message || "Server Error" });
   }
 };
